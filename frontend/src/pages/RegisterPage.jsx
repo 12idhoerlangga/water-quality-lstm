@@ -1,7 +1,7 @@
 // src/pages/RegisterPage.jsx
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Lock, Droplet, ArrowRight } from 'lucide-react';
+import { User, Lock, Droplet, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
 
 const RegisterPage = () => {
@@ -10,6 +10,8 @@ const RegisterPage = () => {
     password: '',
     confirmPassword: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,7 +60,7 @@ const RegisterPage = () => {
   return (
     <div className="fixed inset-0 w-full h-full flex bg-gray-50">
       
-      {/* ===== LEFT PANEL – IMAGE + BRANDING (Desktop Only) ===== */}
+      {/* LEFT PANEL – same as before */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900">
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-60"
@@ -99,10 +101,10 @@ const RegisterPage = () => {
         </div>
       </div>
 
-      {/* ===== RIGHT PANEL – REGISTER CARD (Full width di HP) ===== */}
+      {/* RIGHT PANEL – REGISTER CARD */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-gray-50">
         <div className="w-full max-w-md">
-          {/* Mobile Logo (muncul di HP) */}
+          {/* Mobile Logo */}
           <div className="text-center mb-4 sm:mb-6 lg:hidden">
             <div className="inline-flex items-center gap-2 text-blue-900">
               <Droplet className="w-6 h-6" />
@@ -156,14 +158,22 @@ const RegisterPage = () => {
                       <Lock className="w-5 h-5" />
                     </span>
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       name="password"
                       value={form.password}
                       onChange={handleChange}
                       placeholder="Masukkan password"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-gray-50/50 text-sm sm:text-base"
+                      className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-gray-50/50 text-sm sm:text-base"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                      aria-label="Toggle password visibility"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                 </div>
 
@@ -174,14 +184,22 @@ const RegisterPage = () => {
                       <Lock className="w-5 h-5" />
                     </span>
                     <input
-                      type="password"
+                      type={showConfirmPassword ? 'text' : 'password'}
                       name="confirmPassword"
                       value={form.confirmPassword}
                       onChange={handleChange}
                       placeholder="Konfirmasi password"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-gray-50/50 text-sm sm:text-base"
+                      className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-gray-50/50 text-sm sm:text-base"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                      aria-label="Toggle confirm password visibility"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                 </div>
 

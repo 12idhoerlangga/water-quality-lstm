@@ -31,7 +31,7 @@ const db = mysql.createConnection({
 
 db.connect((err) => {
     if (err) {
-        console.error('Gagal koneksi ke database:', err.message);
+        console.error('❌ Gagal koneksi ke database:', err.message);
         process.exit(1);
     }
     console.log('✅ Database connected!');
@@ -48,7 +48,6 @@ const verifyToken = (req, res, next) => {
     const token = authHeader.split(' ')[1];
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('🔍 Token decoded:', decoded);
         req.user = decoded;
         next();
     } catch (error) {
@@ -268,7 +267,7 @@ app.post('/api/locations', verifyToken, async (req, res) => {
 });
 
 // ============================================================
-// ENDPOINT HAPUS LOKASI (HANYA ADMIN) 🔥 DITAMBAHKAN
+// ENDPOINT HAPUS LOKASI (HANYA ADMIN)
 // ============================================================
 app.delete('/api/locations/:id', verifyToken, async (req, res) => {
     try {
@@ -285,7 +284,6 @@ app.delete('/api/locations/:id', verifyToken, async (req, res) => {
         }
         res.json({ success: true, message: 'Lokasi berhasil dihapus' });
     } catch (error) {
-        // Tangani foreign key constraint
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
             return res.status(400).json({ 
                 error: 'Lokasi tidak dapat dihapus karena masih digunakan pada data prediksi atau pengguna.' 
@@ -311,7 +309,10 @@ app.post('/api/predict', verifyToken, async (req, res) => {
         db.query(
             'SELECT temperature, salinity, ph, turbidity FROM sensor_data ORDER BY created_at DESC LIMIT 26',
             (err, rows) => {
-                if (err) console.warn('Gagal ambil dari database:', err.message);
+                if (err) {
+                    console.warn('⚠️ Gagal ambil dari database:', err.message);
+                    // tetap lanjut dengan fallback excel
+                }
                 
                 let historyData = rows.map(row => [row.temperature, row.salinity, row.ph, row.turbidity]);
 
@@ -354,13 +355,11 @@ app.post('/api/predict', verifyToken, async (req, res) => {
                 let cmd = `"${pythonCmd}" "${pythonScript}" --json --data "${tempFile}"`;
                 if (startDate) cmd += ` --start-date ${startDate}`;
                 if (finalHorizon) cmd += ` --horizon ${finalHorizon}`;
-                console.log('Executing:', cmd);
 
                 exec(cmd, (error, stdout, stderr) => {
                     if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
                     if (error) {
-                        console.error('Error predict.py:', error.message);
-                        console.error('stderr:', stderr);
+                        console.error('❌ Error predict.py:', error.message);
                         return res.status(500).json({ error: 'Gagal memanggil model: ' + error.message });
                     }
                     try {
@@ -389,7 +388,7 @@ app.post('/api/predict', verifyToken, async (req, res) => {
                                         finalHorizon
                                     ];
                                     db.query(query, values, (err) => {
-                                        if (err) console.warn('Gagal simpan prediksi:', err.message);
+                                        if (err) console.warn('⚠️ Gagal simpan prediksi:', err.message);
                                     });
                                 }
                             );
@@ -399,8 +398,7 @@ app.post('/api/predict', verifyToken, async (req, res) => {
                             res.status(500).json({ error: result.message || 'Prediksi gagal' });
                         }
                     } catch (parseError) {
-                        console.error('Gagal parse JSON:', parseError.message);
-                        console.error('stdout:', stdout);
+                        console.error('❌ Gagal parse JSON:', parseError.message);
                         res.status(500).json({ error: 'Gagal parse output JSON' });
                     }
                 });
@@ -460,7 +458,6 @@ app.get('/api/history', verifyToken, async (req, res) => {
 app.get('/api/users/me', verifyToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        console.log('📥 GET /users/me - userId:', userId);
         const [rows] = await db.promise().query(
             'SELECT id, username, role, location_id, created_at FROM users WHERE id = ?',
             [userId]
@@ -481,9 +478,6 @@ app.get('/api/users/me', verifyToken, async (req, res) => {
 app.put('/api/users/me', verifyToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        console.log('📤 PUT /users/me - userId:', userId);
-        console.log('📦 Raw Payload:', req.body);
-
         if (!userId) {
             return res.status(400).json({ error: 'ID user tidak ditemukan dalam token' });
         }
@@ -520,9 +514,6 @@ app.put('/api/users/me', verifyToken, async (req, res) => {
 
         query += ' WHERE id = ?';
         params.push(userId);
-
-        console.log('🔄 Query:', query);
-        console.log('📊 Params:', params);
 
         const [result] = await db.promise().query(query, params);
         if (result.affectedRows === 0) {

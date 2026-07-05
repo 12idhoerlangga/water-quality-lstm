@@ -1,8 +1,7 @@
-// src/api/axios.js
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  baseURL: 'https://water-quality-lstm-production.up.railway.app', // ← LANGSUNG PAKAI INI
   headers: {
     'Content-Type': 'application/json',
   },

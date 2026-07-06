@@ -42,21 +42,24 @@ FEATURE_COLS = ['Temperature', 'Salinity', 'pH', 'Turbidity']
 TARGET_COLS = ['Temperature', 'Salinity', 'pH', 'Turbidity']
 
 # ============================================================
-# FUNGSI LOAD DATA - DENGAN FILTER OUTLIER (3 std)
+# FUNGSI LOAD DATA - DENGAN FILTER OUTLIER (3 std) UNTUK SEMUA PARAMETER
 # ============================================================
 def load_data():
     df = pd.read_excel(DATA_PATH)
     data = df[FEATURE_COLS].values
     
-    # Filter outlier pada kekeruhan (Turbidity) > 3 standar deviasi
-    mean = data[:, 3].mean()
-    std = data[:, 3].std()
-    lower_bound = mean - 3 * std
-    upper_bound = mean + 3 * std
-    mask = (data[:, 3] >= lower_bound) & (data[:, 3] <= upper_bound)
+    # 🔥 Filter outlier untuk SEMUA parameter (3 standar deviasi)
+    mask = np.ones(len(data), dtype=bool)
+    for i in range(len(FEATURE_COLS)):
+        mean = data[:, i].mean()
+        std = data[:, i].std()
+        lower_bound = mean - 3 * std
+        upper_bound = mean + 3 * std
+        mask = mask & (data[:, i] >= lower_bound) & (data[:, i] <= upper_bound)
+    
     data = data[mask]
     
-    print(f"✅ Data dimuat: {len(data)} baris (dengan filter outlier 3 std)")
+    print(f"✅ Data dimuat: {len(data)} baris (dengan filter outlier 3 std untuk SEMUA parameter)")
     return data, df[mask]
 
 # ============================================================
@@ -150,9 +153,9 @@ def save_training_log(trial_count, mape, rmse, mae, r2, hyperparams):
 # ============================================================
 def main():
     print("=" * 60)
-    print("TRAINING LSTM MULTI-TARGET DENGAN OPTUNA (MODIFIKASI)")
+    print("TRAINING LSTM MULTI-TARGET DENGAN OPTUNA (MODIFIKASI - FILTER SEMUA PARAMETER)")
     print("=" * 60)
-    print(f"Dataset: dataset_modified.xlsx (dengan filter outlier 3 std)")
+    print(f"Dataset: dataset_modified.xlsx (dengan filter outlier 3 std untuk SEMUA parameter)")
     print(f"Total Trial: {TRIAL}")
     print(f"Epochs per Trial: {EPOCHS}")
     print("=" * 60)
@@ -272,6 +275,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-    

@@ -34,7 +34,7 @@ db.connect((err) => {
         console.error('❌ Gagal koneksi ke database:', err.message);
         process.exit(1);
     }
-    console.log('✅ Database connected!');
+    console.log(' Database connected!');
 });
 
 // ============================================================
@@ -649,5 +649,5 @@ app.delete('/api/users/:id', verifyToken, async (req, res) => {
 // JALANKAN SERVER
 // ============================================================
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(` Server running on http://localhost:${PORT}`);
 });

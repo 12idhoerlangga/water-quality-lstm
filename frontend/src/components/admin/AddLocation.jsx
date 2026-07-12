@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { MapPin, FileText, PlusCircle, Info, Trash2 } from 'lucide-react';
+import { MapPin, FileText, PlusCircle, Info, Trash2, Edit, X } from 'lucide-react';
 
 const AddLocation = ({ onLocationAdded }) => {
   const [name, setName] = useState('');
@@ -10,6 +10,11 @@ const AddLocation = ({ onLocationAdded }) => {
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState([]);
   const [fetching, setFetching] = useState(false);
+
+  // ===== STATE EDIT =====
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   // ===== FETCH LOKASI =====
   const fetchLocations = async () => {
@@ -41,7 +46,7 @@ const AddLocation = ({ onLocationAdded }) => {
       toast.success('Lokasi berhasil ditambahkan!');
       setName('');
       setDescription('');
-      fetchLocations(); // refresh daftar
+      fetchLocations();
       if (onLocationAdded) onLocationAdded();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Gagal menambah lokasi');
@@ -56,9 +61,41 @@ const AddLocation = ({ onLocationAdded }) => {
     try {
       await api.delete(`/api/locations/${id}`);
       toast.success(`Lokasi "${name}" berhasil dihapus`);
-      fetchLocations(); // refresh daftar
+      fetchLocations();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Gagal menghapus lokasi');
+    }
+  };
+
+  // ===== EDIT LOKASI =====
+  const openEditModal = (loc) => {
+    setEditingLocation({
+      id: loc.id,
+      name: loc.name,
+      description: loc.description || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingLocation.name.trim()) {
+      toast.error('Nama lokasi wajib diisi');
+      return;
+    }
+    setEditLoading(true);
+    try {
+      await api.put(`/api/locations/${editingLocation.id}`, {
+        name: editingLocation.name,
+        description: editingLocation.description,
+      });
+      toast.success('Lokasi berhasil diperbarui!');
+      setEditModalOpen(false);
+      fetchLocations();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Gagal memperbarui lokasi');
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -172,7 +209,14 @@ const AddLocation = ({ onLocationAdded }) => {
                   <tr key={loc.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
                     <td className="px-4 py-2 font-medium text-gray-800">{loc.name}</td>
                     <td className="px-4 py-2 text-gray-500">{loc.description || '-'}</td>
-                    <td className="px-4 py-2 text-center">
+                    <td className="px-4 py-2 text-center space-x-2">
+                      <button
+                        onClick={() => openEditModal(loc)}
+                        className="text-blue-500 hover:text-blue-700 transition"
+                        title="Edit lokasi"
+                      >
+                        <Edit className="w-4 h-4 inline" />
+                      </button>
                       <button
                         onClick={() => handleDelete(loc.id, loc.name)}
                         className="text-red-500 hover:text-red-700 transition"
@@ -188,6 +232,71 @@ const AddLocation = ({ onLocationAdded }) => {
           </div>
         )}
       </div>
+
+      {/* ===== MODAL EDIT LOKASI ===== */}
+      {editModalOpen && editingLocation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
+            <button
+              onClick={() => setEditModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Edit Lokasi</h3>
+            <p className="text-sm text-gray-500 mb-6">Ubah data lokasi yang dipilih.</p>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nama Lokasi <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingLocation.name}
+                  onChange={(e) =>
+                    setEditingLocation({ ...editingLocation, name: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a3a5c] focus:border-[#1a3a5c] outline-none transition"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Deskripsi (opsional)
+                </label>
+                <input
+                  type="text"
+                  value={editingLocation.description || ''}
+                  onChange={(e) =>
+                    setEditingLocation({ ...editingLocation, description: e.target.value })
+                  }
+                  placeholder="Misal: Lokasi dekat muara, kedalaman 3m"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a3a5c] focus:border-[#1a3a5c] outline-none transition"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="px-6 py-2 bg-[#1a3a5c] hover:bg-[#0f2a44] text-white rounded-lg transition disabled:opacity-50"
+                >
+                  {editLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

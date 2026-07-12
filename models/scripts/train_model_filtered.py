@@ -11,6 +11,7 @@ import json
 import mysql.connector
 from dotenv import load_dotenv  
 import warnings
+import time  # 🔥 TAMBAHKAN IMPORT TIME
 warnings.filterwarnings('ignore')
 
 # ============================================================
@@ -48,6 +49,10 @@ def load_data():
     df = pd.read_excel(DATA_PATH)
     data = df[FEATURE_COLS].values
     
+    # 🔥 Catat jumlah data awal
+    initial_count = len(data)
+    print(f"📊 Jumlah data awal (sebelum filter): {initial_count} baris")
+
     # 🔥 Filter outlier untuk SEMUA parameter (3 standar deviasi)
     mask = np.ones(len(data), dtype=bool)
     for i in range(len(FEATURE_COLS)):
@@ -58,8 +63,10 @@ def load_data():
         mask = mask & (data[:, i] >= lower_bound) & (data[:, i] <= upper_bound)
     
     data = data[mask]
+    filtered_count = len(data)
     
-    print(f"✅ Data dimuat: {len(data)} baris (dengan filter outlier 3 std untuk SEMUA parameter)")
+    print(f"✅ Data dimuat: {filtered_count} baris (dengan filter outlier 3 std untuk SEMUA parameter)")
+    print(f"📊 Jumlah data yang dibuang (outlier): {initial_count - filtered_count} baris")
     return data, df[mask]
 
 # ============================================================
@@ -152,6 +159,9 @@ def save_training_log(trial_count, mape, rmse, mae, r2, hyperparams):
 # MAIN
 # ============================================================
 def main():
+    # 🔥 MULAI TIMER
+    start_time = time.time()
+    
     print("=" * 60)
     print("TRAINING LSTM MULTI-TARGET DENGAN OPTUNA (FILTER OUTLIER)")
     print("=" * 60)
@@ -268,6 +278,13 @@ def main():
         r2=r2_turbidity,
         hyperparams=best_params
     )
+    
+    # 🔥 AKHIRI TIMER & TAMPILKAN DURASI
+    end_time = time.time()
+    duration = end_time - start_time
+    print("\n" + "=" * 60)
+    print(f"⏱️ Total waktu training: {duration:.2f} detik ({duration/60:.2f} menit)")
+    print("=" * 60)
     
     print("\n" + "=" * 60)
     print("TRAINING SELESAI!")

@@ -19,7 +19,7 @@ import HistoryPage from './pages/HistoryPage';
 import NotFoundPage from './pages/NotFoundPage';
 import InfoPage from './pages/InfoPage';
 import ProfilePage from './pages/ProfilePage';
-import SettingsPage from './pages/SettingsPage';
+
 
 
 function App() {
@@ -54,7 +54,7 @@ function App() {
 
           <Route path="/admin/info" element={<PrivateRoute requiredRole="admin"><InfoPage /></PrivateRoute>} />
           <Route path="/admin/profile" element={<PrivateRoute requiredRole="admin"><ProfilePage /></PrivateRoute>} />
-          <Route path="/admin/settings" element={<PrivateRoute requiredRole="admin"><SettingsPage /></PrivateRoute>} />
+        
 
 
           {/* ===== USER ROUTES ===== */}
@@ -65,7 +65,7 @@ function App() {
           <Route path="/user/history" element={<PrivateRoute requiredRole="user"><HistoryPage /></PrivateRoute>} />
 
           <Route path="/user/profile" element={<PrivateRoute requiredRole="user"><ProfilePage /></PrivateRoute>} />
-          <Route path="/user/settings" element={<PrivateRoute requiredRole="user"><SettingsPage /></PrivateRoute>} /> 
+     
 
           <Route path="/user/info" element={<PrivateRoute requiredRole="user"><InfoPage /></PrivateRoute>} />
           {/* ===== 404 ===== */}

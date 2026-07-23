@@ -10,16 +10,22 @@ import autoTable from 'jspdf-autotable';
 
 const HistoryList = forwardRef((props, ref) => {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
 
+  // ===== STATE =====
   const [history, setHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(10); // <--- FITUR BARU
   const [sortOrder, setSortOrder] = useState('DESC');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Selection & export
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -39,9 +45,12 @@ const HistoryList = forwardRef((props, ref) => {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/api/history?limit=${limit}&order=${sortOrder}`);
+      let url = `/api/history?limit=${limit}&order=${sortOrder}`;
+      if (startDate) url += `&start_date=${startDate}`;
+      if (endDate) url += `&end_date=${endDate}`;
+      const res = await api.get(url);
+      console.log('📥 Data dari API:', res.data);
       setHistory(res.data);
-      // Filtering akan diterapkan di useEffect di bawah
     } catch (err) {
       console.error('Gagal ambil histori:', err);
       toast.error('Gagal memuat riwayat prediksi.');
@@ -56,34 +65,46 @@ const HistoryList = forwardRef((props, ref) => {
     fetchHistory,
   }));
 
-  // 🔥 Fetch ulang ketika limit atau sortOrder berubah
   useEffect(() => {
     fetchLocations();
     fetchHistory();
-  }, [limit, sortOrder]);
+  }, [limit, sortOrder, startDate, endDate]);
 
-  // 🔥 Filter data berdasarkan search, lokasi, dan history
+  // ============================================================
+  // FILTER DATA (frontend)
+  // ============================================================
   useEffect(() => {
     let filtered = history;
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter((item) =>
-        item.username?.toLowerCase().includes(term) ||
-        getLocationName(item.location_id).toLowerCase().includes(term) ||
-        item.risk_final?.toLowerCase().includes(term) ||
-        new Date(item.created_at).toLocaleDateString('id-ID').includes(term)
+      filtered = filtered.filter((item) => {
+        const locName = getLocationName(item.location_id).toLowerCase();
+        const username = item.username?.toLowerCase() || '';
+        const risk = item.risk_final?.toLowerCase() || '';
+        const date = new Date(item.created_at).toLocaleDateString('id-ID');
+        return (
+          username.includes(term) ||
+          locName.includes(term) ||
+          risk.includes(term) ||
+          date.includes(term)
+        );
+      });
+    }
+
+    if (selectedLocation) {
+      filtered = filtered.filter(
+        (item) => Number(item.location_id) === Number(selectedLocation)
       );
     }
-    if (selectedLocation) {
-      filtered = filtered.filter((item) => Number(item.location_id) === Number(selectedLocation));
-    }
+
     setFilteredHistory(filtered);
     setSelectedRows([]);
     setSelectAll(false);
   }, [searchTerm, selectedLocation, history]);
 
   // ============================================================
-  // HELPER FUNCTIONS (diperbaiki)
+  // HELPER FUNCTIONS
   // ============================================================
   const getLocationName = (locationId) => {
     if (!locationId) return 'Tidak Diketahui';
@@ -111,61 +132,82 @@ const HistoryList = forwardRef((props, ref) => {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
   };
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   // ============================================================
-  // EKSPORT FUNCTIONS (tetap sama)
+  // EXPORT FUNCTIONS
   // ============================================================
-  const exportCSV = () => {
-    const dataToExport = filteredHistory.filter((item) => selectedRows.includes(item.id));
-    if (dataToExport.length === 0) {
+  const getDataToExport = () => {
+    const data = filteredHistory.filter((item) => selectedRows.includes(item.id));
+    if (data.length === 0) {
       toast.error('Pilih minimal satu data untuk diekspor.');
-      return;
+      return null;
     }
+    return data;
+  };
 
-    const headers = ['Tanggal', 'Waktu', 'Lokasi', 'User', 'Suhu', 'pH', 'Salinitas', 'Kekeruhan', 'WQI', 'Risiko'];
-    const rows = dataToExport.map((item) => {
+  const exportCSV = () => {
+    const data = getDataToExport();
+    if (!data) return;
+
+    const headers = [
+      'Tanggal',
+      'Waktu',
+      'Lokasi',
+      'User',
+      'Suhu',
+      'pH',
+      'Salinitas',
+      'Kekeruhan',
+      'WQI',
+      'Risiko',
+    ];
+    const rows = data.map((item) => {
       const params = getLastParams(item.prediction_json);
       return [
         formatDate(item.created_at),
         formatTime(item.created_at),
         getLocationName(item.location_id),
         item.username || '-',
-        params.temperature,
-        params.pH,
-        params.salinity,
-        params.turbidity,
+        params.temperature !== '-' ? params.temperature.toFixed(1) : '-',
+        params.pH !== '-' ? params.pH.toFixed(2) : '-',
+        params.salinity !== '-' ? params.salinity.toFixed(1) : '-',
+        params.turbidity !== '-' ? params.turbidity.toFixed(2) : '-',
         item.wqi_avg || '-',
         item.risk_final || '-',
       ];
     });
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `riwayat_prediksi_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`${dataToExport.length} data berhasil diekspor (CSV)!`);
+    toast.success(`${data.length} data berhasil diekspor (CSV)!`);
     setExportDropdownOpen(false);
   };
 
   const exportExcel = () => {
-    const dataToExport = filteredHistory.filter((item) => selectedRows.includes(item.id));
-    if (dataToExport.length === 0) {
-      toast.error('Pilih minimal satu data untuk diekspor.');
-      return;
-    }
+    const data = getDataToExport();
+    if (!data) return;
 
-    const rows = dataToExport.map((item) => {
+    const rows = data.map((item) => {
       const params = getLastParams(item.prediction_json);
       return {
         Tanggal: formatDate(item.created_at),
@@ -185,16 +227,13 @@ const HistoryList = forwardRef((props, ref) => {
     const ws = XLSX.utils.json_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Prediksi');
     XLSX.writeFile(wb, `riwayat_prediksi_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast.success(`${dataToExport.length} data berhasil diekspor (Excel)!`);
+    toast.success(`${data.length} data berhasil diekspor (Excel)!`);
     setExportDropdownOpen(false);
   };
 
   const exportPDF = () => {
-    const dataToExport = filteredHistory.filter((item) => selectedRows.includes(item.id));
-    if (dataToExport.length === 0) {
-      toast.error('Pilih minimal satu data untuk diekspor.');
-      return;
-    }
+    const data = getDataToExport();
+    if (!data) return;
 
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -204,10 +243,27 @@ const HistoryList = forwardRef((props, ref) => {
     doc.text('Riwayat Prediksi Kualitas Air', pageWidth / 2, 15, { align: 'center' });
     doc.setFontSize(10);
     doc.setTextColor('#666');
-    doc.text(`Tanggal Export: ${new Date().toLocaleDateString('id-ID')}`, pageWidth / 2, 22, { align: 'center' });
+    doc.text(
+      `Tanggal Export: ${new Date().toLocaleDateString('id-ID')}`,
+      pageWidth / 2,
+      22,
+      { align: 'center' }
+    );
 
-    const tableHeaders = ['No', 'Tanggal', 'Waktu', 'Lokasi', 'User', 'Suhu', 'pH', 'Salinitas', 'Kekeruhan', 'WQI', 'Risiko'];
-    const tableRows = dataToExport.map((item, idx) => {
+    const tableHeaders = [
+      'No',
+      'Tanggal',
+      'Waktu',
+      'Lokasi',
+      'User',
+      'Suhu',
+      'pH',
+      'Salinitas',
+      'Kekeruhan',
+      'WQI',
+      'Risiko',
+    ];
+    const tableRows = data.map((item, idx) => {
       const params = getLastParams(item.prediction_json);
       return [
         idx + 1,
@@ -244,12 +300,12 @@ const HistoryList = forwardRef((props, ref) => {
     });
 
     doc.save(`riwayat_prediksi_${new Date().toISOString().slice(0, 10)}.pdf`);
-    toast.success(`${dataToExport.length} data berhasil diekspor (PDF)!`);
+    toast.success(`${data.length} data berhasil diekspor (PDF)!`);
     setExportDropdownOpen(false);
   };
 
   // ============================================================
-  // HANDLE SELECT ALL
+  // HANDLE SELECT ALL / ROW
   // ============================================================
   const handleSelectAll = () => {
     if (selectAll) {
@@ -270,14 +326,18 @@ const HistoryList = forwardRef((props, ref) => {
   // RENDER
   // ============================================================
   if (loading) {
-    return <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 animate-pulse">Memuat...</div>;
+    return (
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 animate-pulse">
+        Memuat...
+      </div>
+    );
   }
 
   const orderLabel = sortOrder === 'DESC' ? 'terbaru' : 'terlama';
 
   return (
     <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
-      {/* HEADER & TOOLS */}
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-800">Riwayat Pengukuran</h3>
@@ -285,86 +345,122 @@ const HistoryList = forwardRef((props, ref) => {
             Menampilkan {filteredHistory.length} dari {history.length} data
           </p>
         </div>
+      </div>
 
-        {/* FILTER BAR */}
-        <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full md:w-auto">
-          <div className="relative flex-1 sm:w-48">
+      {/* FILTER BAR - LENGKAP + LIMIT */}
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full mb-6">
+        {/* Search */}
+        <div className="flex-1 min-w-[150px]">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Cari..."
+              placeholder="Cari user, lokasi, risiko..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
+        </div>
 
+        {/* Filter Lokasi */}
+        <div className="w-full sm:w-44">
           <select
             value={selectedLocation}
             onChange={(e) => setSelectedLocation(e.target.value)}
-            className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
           >
             <option value="">Semua Lokasi</option>
             {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>{loc.name}</option>
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
             ))}
           </select>
+        </div>
 
+        {/* Sorting */}
+        <div className="w-full sm:w-36">
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
           >
             <option value="DESC">Terbaru</option>
             <option value="ASC">Terlama</option>
           </select>
+        </div>
 
+        {/* Start Date */}
+        <div className="w-full sm:w-40">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+        </div>
+
+        {/* End Date */}
+        <div className="w-full sm:w-40">
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+        </div>
+
+        {/* ===== FITUR BARU: DROPDOWN LIMIT ===== */}
+        <div className="w-full sm:w-28">
           <select
             value={limit}
-            onChange={(e) => setLimit(parseInt(e.target.value))}
-            className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+            onChange={(e) => setLimit(Number(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
           >
-            <option value={10}>10 data</option>
-            <option value={25}>25 data</option>
-            <option value={50}>50 data</option>
-            <option value={100}>100 data</option>
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
           </select>
+        </div>
 
-          {/* EXPORT DROPDOWN */}
-          <div className="relative w-full sm:w-auto">
-            <button
-              onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
-              disabled={selectedRows.length === 0}
-              className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg transition text-sm font-medium ${
-                selectedRows.length > 0
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              <Download className="w-4 h-4" />
-              Export ({selectedRows.length})
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            {exportDropdownOpen && selectedRows.length > 0 && (
-              <div className="absolute right-0 mt-1 w-full sm:w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
-                <button onClick={exportPDF} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2 border-b border-gray-100">
-                  📄 PDF
-                </button>
-                <button onClick={exportExcel} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2 border-b border-gray-100">
-                  📊 Excel
-                </button>
-                {isAdmin && (
-                  <button onClick={exportCSV} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2">
-                    📋 CSV
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+        {/* Tombol Export dengan Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
+            className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Export
+            <ChevronDown className="w-4 h-4" />
+          </button>
+          {exportDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+              <button
+                onClick={exportPDF}
+                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 rounded-t-lg"
+              >
+                PDF
+              </button>
+              <button
+                onClick={exportExcel}
+                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+              >
+                Excel
+              </button>
+              <button
+                onClick={exportCSV}
+                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 rounded-b-lg"
+              >
+                CSV
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* TABEL */}
+      {/* TABEL - sama seperti sebelumnya */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -394,7 +490,9 @@ const HistoryList = forwardRef((props, ref) => {
           <tbody>
             {filteredHistory.length === 0 ? (
               <tr>
-                <td colSpan="11" className="p-6 text-center text-gray-500">Tidak ada data yang sesuai.</td>
+                <td colSpan="11" className="p-6 text-center text-gray-500">
+                  Tidak ada data yang sesuai.
+                </td>
               </tr>
             ) : (
               filteredHistory.map((item, idx) => {
@@ -406,6 +504,7 @@ const HistoryList = forwardRef((props, ref) => {
                     ? 'text-yellow-600 bg-yellow-50'
                     : 'text-green-600 bg-green-50';
                 const isChecked = selectedRows.includes(item.id);
+
                 return (
                   <tr key={item.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="p-3 border border-gray-200 text-center">
@@ -443,7 +542,9 @@ const HistoryList = forwardRef((props, ref) => {
                       {item.wqi_avg || '-'}
                     </td>
                     <td className="p-3 border border-gray-200 text-center">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${riskClass}`}>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${riskClass}`}
+                      >
                         {item.risk_final || '-'}
                       </span>
                     </td>

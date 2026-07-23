@@ -2,7 +2,7 @@
 import { useAuth } from '../../context/AuthContext';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { X, User, Settings, LogOut, Droplet, Info } from 'lucide-react';
+import { X, User, LogOut, Droplet, Info } from 'lucide-react';
 
 const ProfileSidebar = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
@@ -21,16 +21,12 @@ const ProfileSidebar = ({ isOpen, onClose }) => {
 
   const isActive = (path) => location.pathname === path;
 
+  // REVISI: Menghapus objek 'Pengaturan' karena fiturnya sudah digabung ke halaman Profil
   const menuItems = [
     {
-      label: 'Profil',
+      label: 'Kelola Akun ', 
       icon: User,
       path: user?.role === 'admin' ? '/admin/profile' : '/user/profile',
-    },
-    {
-      label: 'Pengaturan',
-      icon: Settings,
-      path: user?.role === 'admin' ? '/admin/settings' : '/user/settings',
     },
     {
       label: 'Informasi & Panduan',

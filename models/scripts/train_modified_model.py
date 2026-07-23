@@ -18,9 +18,9 @@ warnings.filterwarnings('ignore')
 # KONFIGURASI (Path Absolut) - PAKAI DATASET MODIFIKASI
 # ============================================================
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-DATA_PATH = os.path.join(BASE_DIR, 'data', 'dataset_modified.xlsx')  # 🔥 PAKAI DATASET MODIFIKASI
-MODEL_SAVE_PATH = os.path.join(BASE_DIR, 'models', 'lstm_model_modified.h5')  # 🔥 NAMA BERBEDA
-SCALER_SAVE_PATH = os.path.join(BASE_DIR, 'models', 'scaler_modified.pkl')    # 🔥 SCALER BERBEDA
+DATA_PATH = os.path.join(BASE_DIR, 'data', 'dataset_modified.xlsx')  #  PAKAI DATASET MODIFIKASI
+MODEL_SAVE_PATH = os.path.join(BASE_DIR, 'models', 'lstm_model_modified.h5')  #  NAMA BERBEDA
+SCALER_SAVE_PATH = os.path.join(BASE_DIR, 'models', 'scaler_modified.pkl')    #  SCALER BERBEDA
 
 # Load konfigurasi database dari .env
 dotenv_path = os.path.join(BASE_DIR, 'backend', '.env')
@@ -35,8 +35,8 @@ DB_CONFIG = {
     'port': os.getenv('DB_PORT', 3306)
 }
 
-EPOCHS = 25
-TRIAL = 5  # Ubah ke 40 nanti untuk full training
+EPOCHS = 50
+TRIAL = 10  
 WINDOW_OPTIONS = [24, 48]
 LAG_STEPS = 3
 FEATURE_COLS = ['Temperature', 'Salinity', 'pH', 'Turbidity']

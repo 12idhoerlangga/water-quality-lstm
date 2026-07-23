@@ -39,7 +39,7 @@ const Navbar = () => {
     { label: 'Perbandingan', icon: GitCompare, path: '/admin/baseline-compare' },
     { label: 'Prediksi', icon: BrainCircuit, path: '/admin/predict' },
     { label: 'Riwayat', icon: History, path: '/admin/history' },
-    { label: 'Tambah Lokasi', icon: MapPin, path: '/admin/locations' },
+    { label: 'Kelola Lokasi', icon: MapPin, path: '/admin/locations' },
     { label: 'Kelola User', icon: Users, path: '/admin/users' },
   ];
 

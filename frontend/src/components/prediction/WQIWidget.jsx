@@ -3,6 +3,7 @@ const WQIWidget = ({ data }) => {
     if (!data || data.length === 0) return null;
     const last = data[data.length - 1];
     const avgWQI = data.reduce((sum, d) => sum + d.wqi, 0) / data.length;
+    // const avgWQI = data[0]?.wqi || 0;
     const riskColor = { 'Rendah': 'text-green-600 bg-green-100', 'Sedang': 'text-yellow-600 bg-yellow-100', 'Tinggi': 'text-red-600 bg-red-100' };
   
     return (
